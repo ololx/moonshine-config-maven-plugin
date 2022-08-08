@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!--[artifact-->
-    <groupId>io.github.ololx.moohshine</groupId>
+    <groupId>io.github.ololx.moonshine</groupId>
     <artifactId>moonshine-config-maven-plugin</artifactId>
     <version>${revision}${sha1}${changelist}</version>
     <packaging>maven-plugin</packaging>
@@ -102,7 +102,7 @@
     <!--[properties-->
     <properties>
         <!--[project versions-->
-        <revision>0.0.1</revision>
+        <revision>0.0.2</revision>
         <changelist>-SNAPSHOT</changelist>
         <sha1/>
         <!--project versions]-->
@@ -343,42 +343,6 @@
             </plugin>
             <!--checking requires]-->
 
-            <!--[reporting code coverage-->
-            <!--used for codecov.io-->
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${plugin.jacoco-maven-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>default-prepare-agent</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>default-prepare-agent-integration</id>
-                        <goals>
-                            <goal>prepare-agent-integration</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>report-aggregate</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report-aggregate</goal>
-                        </goals>
-                        <configuration>
-                            <dataFileIncludes>
-                                <dataFileInclude>**/jacoco.exec</dataFileInclude>
-                            </dataFileIncludes>
-                            <outputDirectory>${project.build.outputDirectory}</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!--reporting code coverage]-->
-
             <!--[reporting git branch info-->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -451,35 +415,6 @@
                 </configuration>
             </plugin>
             <!--compiling source]-->
-
-            <!--[cleaning target-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-clean-plugin</artifactId>
-                <version>${plugin.maven-clean-plugin.version}</version>
-            </plugin>
-            <!--cleaning target]-->
-
-            <!--[packaging to jar-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>${plugin.maven-jar-plugin.version}</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
-                        </manifest>
-                        <manifestEntries>
-                            <Implementation-Version>${project.version}-${buildNumber}</Implementation-Version>
-                            <!--suppress UnresolvedMavenProperty -->
-                            <Implementation-Build>${scmBranch}</Implementation-Build>
-                        </manifestEntries>
-                    </archive>
-                </configuration>
-            </plugin>
-            <!--packaging to jar]-->
         </plugins>
         <!--build general]-->
 
