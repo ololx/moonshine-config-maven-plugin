@@ -16,9 +16,14 @@
  */
 package io.github.ololx.moonshine.config.maven.plugin;
 
+import org.apache.maven.model.Resource;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+
+import java.util.List;
 
 /**
  * project moonshine-config-maven-plugin
@@ -26,10 +31,29 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  * @author Alexander A. Kropotin
  */
-@Mojo( name = "config")
-public class ConfigPluginMojo extends AbstractMojo {
+@Mojo(
+        name = "print",
+        defaultPhase = LifecyclePhase.PROCESS_RESOURCES
+)
+public class ResourcePrintingPlugin extends AbstractMojo {
 
+    /**
+     * This element describes all of the classpath resources such as
+     * properties files associated with a project. These resources are often
+     * included in the final package. The default value is src/main/resources.
+     */
+    @Parameter(defaultValue = "${project.build.resources/resource*}")
+    private List<Resource> mainResources;
+
+    @Override
     public void execute() throws MojoExecutionException {
-        getLog().info( "Hello, config." );
+        getLog().info( "Start to load all resources from '../src/main/resources/..' folders" );
+        this.printResourcesPath(mainResources);
+    }
+
+    private void printResourcesPath(List<Resource> resources) {
+        resources.forEach(resource -> {
+            getLog().info(resource.getTargetPath());
+        });
     }
 }
