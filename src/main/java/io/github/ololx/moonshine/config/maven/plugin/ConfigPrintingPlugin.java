@@ -30,7 +30,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * project moonshine-config-maven-plugin
@@ -44,13 +46,21 @@ import java.util.stream.Collectors;
 )
 public final class ConfigPrintingPlugin extends AbstractMojo {
 
-    @Parameter(property = "resources", defaultValue = "${project.resources}", required = true, readonly = true)//${project.resources}
+    private static final String ROW_FORMAT = "| %-40s | %-60s |";
+
+    private static final String ROW_BORDER = "+"
+            + Stream.iterate(0, i -> i++).limit(105).map(i -> "-").reduce(String::concat).get()
+            + "+";
+
+    private static final String HEADER = String.format(ROW_FORMAT, "PROPERTY", "VALUE");
+
+    @Parameter(property = "resources", defaultValue = "${project.resources}", required = true, readonly = true)
     private List<Resource> resources = new ArrayList<>();
 
     @Parameter(property = "testResources", defaultValue = "${project.testResources}", required = true, readonly = true)
     private List<Resource> testResources;
 
-    FileWalker walker = new FileWalker(getLog());
+    FileWalker walker = new FileWalker(info -> getLog().info(info));
 
     public void setResources(List<Resource> resources) {
         this.resources.addAll(Objects.requireNonNull(resources));
@@ -74,15 +84,54 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
     private void walkingThroughConfigFiles(List<Resource> files, String alias) throws IOException {
         for (Resource resource : files) {
             getLog().info("Walking through " + alias + " - " + resource.getDirectory());
-            walker.walk(resource.getDirectory());
+            Map<String, File> configFiles = walker.walk(resource.getDirectory());
+            for (Map.Entry<String, File> configFile : configFiles.entrySet()) {
+                List<String> lines = Files.readAllLines(configFile.getValue().toPath());
+                getLog().info("Reading config file - " + configFile.getKey());
+
+                if (lines.isEmpty()) {
+                    getLog().info("EMPTY\n");
+                    continue;
+                }
+
+                getLog().info(ROW_BORDER);
+                getLog().info(HEADER);
+
+                for (String line : lines) {
+                    String[] propertyTuples = line.split("=");
+
+                    if (propertyTuples.length < 2) {
+                        continue;
+                    }
+
+                    printRow(
+                            propertyTuples[0].trim(),
+                            getStringOrSplitInArray(propertyTuples[1].trim(), 60)
+                    );
+                }
+
+                getLog().info(ROW_BORDER + "\n");
+            }
+        }
+    }
+
+    private String[] getStringOrSplitInArray(String str, int size) {
+        return str == null ? new String[0] : str.split("(?<=\\G.{"+size+"})");
+    }
+
+    private void printRow(String first, String[] values) {
+        getLog().info(ROW_BORDER);
+
+        for (String value : values) {
+            getLog().info(String.format(ROW_FORMAT, first, value));
         }
     }
 
     private static class FileWalker {
 
-        private final Log log;
+        private final Consumer<String> log;
 
-        private FileWalker(Log log) {
+        private FileWalker(Consumer<String> log) {
             this.log = Objects.requireNonNull(log);
         }
 
@@ -94,7 +143,7 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
 
             return Files.walk(root.toPath())
                     .filter(file -> file.getFileName().toString().contains(".properties"))
-                    .peek(file -> this.log.info("Walk on property file - " + file))
+                    .peek(file -> this.log.accept("Walk on property file - " + file))
                     .collect(Collectors.toMap(file -> file.getFileName().toString(), Path::toFile));
         }
     }
