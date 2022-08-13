@@ -16,6 +16,7 @@
  */
 package io.github.ololx.moonshine.config.maven.plugin;
 
+import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Resource;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -30,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,25 +51,57 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
     private static final String ROW_FORMAT = "| %-40s | %-60s |";
 
     private static final String ROW_BORDER = "+"
-            + Stream.iterate(0, i -> i++).limit(105).map(i -> "-").reduce(String::concat).get()
+            + Stream.iterate(0, i -> i++).limit(42).map(i -> "-").reduce(String::concat).get()
+            + "+"
+            + Stream.iterate(0, i -> i++).limit(62).map(i -> "-").reduce(String::concat).get()
             + "+";
 
     private static final String HEADER = String.format(ROW_FORMAT, "PROPERTY", "VALUE");
 
-    @Parameter(property = "resources", defaultValue = "${project.resources}", required = true, readonly = true)
-    private List<Resource> resources = new ArrayList<>();
+    @Parameter(
+            property = "resources",
+            defaultValue = "${project.build.resources}",
+            required = true,
+            readonly = true
+    )
+    private final List<String> resources = new ArrayList<>();
 
-    @Parameter(property = "testResources", defaultValue = "${project.testResources}", required = true, readonly = true)
-    private List<Resource> testResources;
+    @Parameter(
+            property = "testResources",
+            defaultValue = "${project.build.testResources}",
+            required = true,
+            readonly = true
+    )
+    private final List<String> testResources = new ArrayList<>();
+
+    @Parameter(
+            property = "outputDirectory",
+            defaultValue = "${project.build.outputDirectory}",
+            required = true,
+            readonly = true
+    )
+    private String outputDirectory = "";
 
     FileWalker walker = new FileWalker(info -> getLog().info(info));
 
     public void setResources(List<Resource> resources) {
-        this.resources.addAll(Objects.requireNonNull(resources));
+        this.resources.addAll(
+                Objects.requireNonNull(resources).stream()
+                        .map(FileSet::getDirectory)
+                        .collect(Collectors.toList())
+        );
     }
 
     public void setTestResources(List<Resource> testResources) {
-        this.testResources.addAll(Objects.requireNonNull(testResources));
+        this.testResources.addAll(
+                Objects.requireNonNull(testResources).stream()
+                        .map(FileSet::getDirectory)
+                        .collect(Collectors.toList())
+        );
+    }
+
+    public void setOutputDirectory(String outputDirectory) {
+        this.outputDirectory = Objects.requireNonNull(outputDirectory);
     }
 
     @Override
@@ -76,42 +110,46 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
         try {
             this.walkingThroughConfigFiles(resources, "resources");
             this.walkingThroughConfigFiles(testResources, "testResources");
+            this.walkingThroughConfigFiles(outputDirectory, "outputDirectory");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    private void walkingThroughConfigFiles(List<String> files, String alias) throws IOException {
+        for (String resource : files) {
+            this.walkingThroughConfigFiles(resource, alias);
+        }
+    }
 
-    private void walkingThroughConfigFiles(List<Resource> files, String alias) throws IOException {
-        for (Resource resource : files) {
-            getLog().info("Walking through " + alias + " - " + resource.getDirectory());
-            Map<String, File> configFiles = walker.walk(resource.getDirectory());
-            for (Map.Entry<String, File> configFile : configFiles.entrySet()) {
-                List<String> lines = Files.readAllLines(configFile.getValue().toPath());
-                getLog().info("Reading config file - " + configFile.getKey());
+    private void walkingThroughConfigFiles(String files, String alias) throws IOException {
+        getLog().info("Walking through " + alias + " - " + files);
+        Map<String, File> configFiles = walker.walk(files);
+        for (Map.Entry<String, File> configFile : configFiles.entrySet()) {
+            List<String> lines = Files.readAllLines(configFile.getValue().toPath());
+            getLog().info("Reading config file - " + configFile.getKey());
 
-                if (lines.isEmpty()) {
-                    getLog().info("EMPTY\n");
+            if (lines.isEmpty()) {
+                getLog().info("EMPTY\n");
+                continue;
+            }
+
+            getLog().info(ROW_BORDER);
+            getLog().info(HEADER);
+
+            for (String line : lines) {
+                String[] propertyTuples = line.split("=");
+
+                if (propertyTuples.length < 2) {
                     continue;
                 }
 
-                getLog().info(ROW_BORDER);
-                getLog().info(HEADER);
-
-                for (String line : lines) {
-                    String[] propertyTuples = line.split("=");
-
-                    if (propertyTuples.length < 2) {
-                        continue;
-                    }
-
-                    printRow(
-                            propertyTuples[0].trim(),
-                            getStringOrSplitInArray(propertyTuples[1].trim(), 60)
-                    );
-                }
-
-                getLog().info(ROW_BORDER + "\n");
+                printRow(
+                        propertyTuples[0].trim(),
+                        getStringOrSplitInArray(propertyTuples[1].trim(), 60)
+                );
             }
+
+            getLog().info(ROW_BORDER + "\n");
         }
     }
 
