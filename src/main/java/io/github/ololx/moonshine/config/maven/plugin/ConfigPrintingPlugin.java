@@ -160,8 +160,12 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
     private void printRow(String first, String[] values) {
         getLog().info(ROW_BORDER);
 
-        for (String value : values) {
-            getLog().info(String.format(ROW_FORMAT, first, value));
+        for (int valuePointer = 0; valuePointer < values.length; valuePointer++) {
+            if (valuePointer == (values.length - 1) / 2) {
+                getLog().info(String.format(ROW_FORMAT, first, values[valuePointer]));
+            } else {
+                getLog().info(String.format(ROW_FORMAT, "", values[valuePointer]));
+            }
         }
     }
 
