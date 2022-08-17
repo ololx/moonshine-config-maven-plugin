@@ -31,7 +31,6 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * project moonshine-config-maven-plugin
@@ -45,27 +44,21 @@ import java.util.stream.Stream;
 )
 public final class ConfigPrintingPlugin extends AbstractMojo {
 
-    private static final String ROW_FORMAT = '\u2502' + " %-40s " + '\u2502' + " %-60s " + '\u2502';
+    private static final List<String> HEADER;
 
-    private static final String TOP_ROW_BORDER = '\u250C'
-            + Stream.iterate(0, i -> i++).limit(42).map(i -> "\u2500").reduce(String::concat).get()
-            + "\u252C"
-            + Stream.iterate(0, i -> i++).limit(62).map(i -> "\u2500").reduce(String::concat).get()
-            + '\u2510';
+    private static final List<PseudoTable.ColumnFormat> COLUMN_FORMATS;
 
-    private static final String MIDDLE_ROW_BORDER = '\u251C'
-            + Stream.iterate(0, i -> i++).limit(42).map(i -> "\u2500").reduce(String::concat).get()
-            + "\u253C"
-            + Stream.iterate(0, i -> i++).limit(62).map(i -> "\u2500").reduce(String::concat).get()
-            + '\u2524';
+    static {
+        HEADER = new ArrayList<String>() {{
+            add("PROPERTY NAME");
+            add("PROPERTY VALUE");
+        }};
 
-    private static final String BOTTOM_ROW_BORDER = '\u2514'
-            + Stream.iterate(0, i -> i++).limit(42).map(i -> "\u2500").reduce(String::concat).get()
-            + "\u2534"
-            + Stream.iterate(0, i -> i++).limit(62).map(i -> "\u2500").reduce(String::concat).get()
-            + '\u2518';
-
-    private static final String HEADER = String.format(ROW_FORMAT, "PROPERTY", "VALUE");
+        COLUMN_FORMATS = new ArrayList<PseudoTable.ColumnFormat>(){{
+            add(new PseudoTable.ColumnFormat(0, 40));
+            add(new PseudoTable.ColumnFormat(1, 60));
+        }};
+    }
 
     @Parameter(
             property = "resources",
@@ -115,7 +108,6 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        getLog().info( "Walking through resource directories...");
         try {
             this.walkingThroughConfigFiles(resources, "resources");
             this.walkingThroughConfigFiles(testResources, "testResources");
@@ -132,31 +124,24 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
     }
 
     private void walkingThroughConfigFiles(String files, String alias) throws IOException {
-        getLog().info("Walking through " + alias + " - " + files);
         Map<String, File> configFiles = walker.walk(files);
         for (Map.Entry<String, File> configFile : configFiles.entrySet()) {
             List<String> lines = Files.readAllLines(configFile.getValue().toPath());
-            getLog().info("Reading config file - " + configFile.getKey());
+            getLog().info("Reading config file - " + configFile.getValue());
 
-            if (lines.isEmpty()) {
-                getLog().info("EMPTY\n");
-                continue;
-            }
-
-            PseudoTwoColumnTable table = new PseudoTwoColumnTable();
-            table.setHeader(
-                    new ArrayList<String>() {{
-                        add("PROPERTY NAME");
-                        add("PROPERTY VALUE");
-                    }}
-            );
+            PseudoTable table = new PseudoTable(COLUMN_FORMATS);
+            table.setHeader(HEADER);
 
             for (String line : lines) {
                 List<Object> propertyTuples = Arrays.stream(line.split("=")).map(v -> (Object) v).collect(Collectors.toList());
+                if (propertyTuples.size() < 2) {
+                    continue;
+                }
                 table.addBodyRow(propertyTuples);
             }
 
             table.print((row) -> getLog().info(row));
+            getLog().info("\n");
         }
     }
 
