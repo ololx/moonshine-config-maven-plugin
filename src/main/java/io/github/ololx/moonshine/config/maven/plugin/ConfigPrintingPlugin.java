@@ -20,7 +20,6 @@ import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Resource;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -29,9 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -48,13 +45,25 @@ import java.util.stream.Stream;
 )
 public final class ConfigPrintingPlugin extends AbstractMojo {
 
-    private static final String ROW_FORMAT = "| %-40s | %-60s |";
+    private static final String ROW_FORMAT = '\u2502' + " %-40s " + '\u2502' + " %-60s " + '\u2502';
 
-    private static final String ROW_BORDER = "+"
-            + Stream.iterate(0, i -> i++).limit(42).map(i -> "-").reduce(String::concat).get()
-            + "+"
-            + Stream.iterate(0, i -> i++).limit(62).map(i -> "-").reduce(String::concat).get()
-            + "+";
+    private static final String TOP_ROW_BORDER = '\u250C'
+            + Stream.iterate(0, i -> i++).limit(42).map(i -> "\u2500").reduce(String::concat).get()
+            + "\u252C"
+            + Stream.iterate(0, i -> i++).limit(62).map(i -> "\u2500").reduce(String::concat).get()
+            + '\u2510';
+
+    private static final String MIDDLE_ROW_BORDER = '\u251C'
+            + Stream.iterate(0, i -> i++).limit(42).map(i -> "\u2500").reduce(String::concat).get()
+            + "\u253C"
+            + Stream.iterate(0, i -> i++).limit(62).map(i -> "\u2500").reduce(String::concat).get()
+            + '\u2524';
+
+    private static final String BOTTOM_ROW_BORDER = '\u2514'
+            + Stream.iterate(0, i -> i++).limit(42).map(i -> "\u2500").reduce(String::concat).get()
+            + "\u2534"
+            + Stream.iterate(0, i -> i++).limit(62).map(i -> "\u2500").reduce(String::concat).get()
+            + '\u2518';
 
     private static final String HEADER = String.format(ROW_FORMAT, "PROPERTY", "VALUE");
 
@@ -115,6 +124,7 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
             e.printStackTrace();
         }
     }
+
     private void walkingThroughConfigFiles(List<String> files, String alias) throws IOException {
         for (String resource : files) {
             this.walkingThroughConfigFiles(resource, alias);
@@ -133,39 +143,20 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
                 continue;
             }
 
-            getLog().info(ROW_BORDER);
-            getLog().info(HEADER);
+            PseudoTwoColumnTable table = new PseudoTwoColumnTable();
+            table.setHeader(
+                    new ArrayList<String>() {{
+                        add("PROPERTY NAME");
+                        add("PROPERTY VALUE");
+                    }}
+            );
 
             for (String line : lines) {
-                String[] propertyTuples = line.split("=");
-
-                if (propertyTuples.length < 2) {
-                    continue;
-                }
-
-                printRow(
-                        propertyTuples[0].trim(),
-                        getStringOrSplitInArray(propertyTuples[1].trim(), 60)
-                );
+                List<Object> propertyTuples = Arrays.stream(line.split("=")).map(v -> (Object) v).collect(Collectors.toList());
+                table.addBodyRow(propertyTuples);
             }
 
-            getLog().info(ROW_BORDER + "\n");
-        }
-    }
-
-    private String[] getStringOrSplitInArray(String str, int size) {
-        return str == null ? new String[0] : str.split("(?<=\\G.{"+size+"})");
-    }
-
-    private void printRow(String first, String[] values) {
-        getLog().info(ROW_BORDER);
-
-        for (int valuePointer = 0; valuePointer < values.length; valuePointer++) {
-            if (valuePointer == (values.length - 1) / 2) {
-                getLog().info(String.format(ROW_FORMAT, first, values[valuePointer]));
-            } else {
-                getLog().info(String.format(ROW_FORMAT, "", values[valuePointer]));
-            }
+            table.print((row) -> getLog().info(row));
         }
     }
 
