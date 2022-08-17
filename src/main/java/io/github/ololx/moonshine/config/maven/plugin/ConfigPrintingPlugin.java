@@ -20,7 +20,6 @@ import org.apache.maven.model.FileSet;
 import org.apache.maven.model.Resource;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -29,12 +28,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * project moonshine-config-maven-plugin
@@ -48,15 +44,21 @@ import java.util.stream.Stream;
 )
 public final class ConfigPrintingPlugin extends AbstractMojo {
 
-    private static final String ROW_FORMAT = "| %-40s | %-60s |";
+    private static final List<String> HEADER;
 
-    private static final String ROW_BORDER = "+"
-            + Stream.iterate(0, i -> i++).limit(42).map(i -> "-").reduce(String::concat).get()
-            + "+"
-            + Stream.iterate(0, i -> i++).limit(62).map(i -> "-").reduce(String::concat).get()
-            + "+";
+    private static final List<PseudoTable.ColumnFormat> COLUMN_FORMATS;
 
-    private static final String HEADER = String.format(ROW_FORMAT, "PROPERTY", "VALUE");
+    static {
+        HEADER = new ArrayList<String>() {{
+            add("PROPERTY NAME");
+            add("PROPERTY VALUE");
+        }};
+
+        COLUMN_FORMATS = new ArrayList<PseudoTable.ColumnFormat>(){{
+            add(new PseudoTable.ColumnFormat(0, 40));
+            add(new PseudoTable.ColumnFormat(1, 60));
+        }};
+    }
 
     @Parameter(
             property = "resources",
@@ -106,7 +108,6 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException {
-        getLog().info( "Walking through resource directories...");
         try {
             this.walkingThroughConfigFiles(resources, "resources");
             this.walkingThroughConfigFiles(testResources, "testResources");
@@ -115,6 +116,7 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
             e.printStackTrace();
         }
     }
+
     private void walkingThroughConfigFiles(List<String> files, String alias) throws IOException {
         for (String resource : files) {
             this.walkingThroughConfigFiles(resource, alias);
@@ -122,46 +124,24 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
     }
 
     private void walkingThroughConfigFiles(String files, String alias) throws IOException {
-        getLog().info("Walking through " + alias + " - " + files);
         Map<String, File> configFiles = walker.walk(files);
         for (Map.Entry<String, File> configFile : configFiles.entrySet()) {
             List<String> lines = Files.readAllLines(configFile.getValue().toPath());
-            getLog().info("Reading config file - " + configFile.getKey());
+            getLog().info("Reading config file - " + configFile.getValue());
 
-            if (lines.isEmpty()) {
-                getLog().info("EMPTY\n");
-                continue;
-            }
-
-            getLog().info(ROW_BORDER);
-            getLog().info(HEADER);
+            PseudoTable table = new PseudoTable(COLUMN_FORMATS);
+            table.setHeader(HEADER);
 
             for (String line : lines) {
-                String[] propertyTuples = line.split("=");
-
-                if (propertyTuples.length < 2) {
+                List<Object> propertyTuples = Arrays.stream(line.split("=")).map(v -> (Object) v).collect(Collectors.toList());
+                if (propertyTuples.size() < 2) {
                     continue;
                 }
-
-                printRow(
-                        propertyTuples[0].trim(),
-                        getStringOrSplitInArray(propertyTuples[1].trim(), 60)
-                );
+                table.addBodyRow(propertyTuples);
             }
 
-            getLog().info(ROW_BORDER + "\n");
-        }
-    }
-
-    private String[] getStringOrSplitInArray(String str, int size) {
-        return str == null ? new String[0] : str.split("(?<=\\G.{"+size+"})");
-    }
-
-    private void printRow(String first, String[] values) {
-        getLog().info(ROW_BORDER);
-
-        for (String value : values) {
-            getLog().info(String.format(ROW_FORMAT, first, value));
+            table.print((row) -> getLog().info(row));
+            getLog().info("\n");
         }
     }
 
