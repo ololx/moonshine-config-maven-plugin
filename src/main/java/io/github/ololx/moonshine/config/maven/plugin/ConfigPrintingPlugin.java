@@ -84,7 +84,7 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
     )
     private String outputDirectory = "";
 
-    FileWalker walker = new FileWalker(info -> getLog().info(info));
+    FileWalker walker = new FileWalker();
 
     public void setResources(List<Resource> resources) {
         this.resources.addAll(
@@ -124,7 +124,17 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
     }
 
     private void walkingThroughConfigFiles(String files, String alias) throws IOException {
-        Map<String, File> configFiles = walker.walk(files);
+        File rootDir = new File(files);
+        if (!rootDir.exists() || !rootDir.isDirectory()) {
+            return;
+        }
+
+        Map<String, File> configFiles = walker.walk(Arrays.asList(rootDir.listFiles()))
+                .parallelStream()
+                .filter(file -> file.getName().contains(".properties"))
+                .peek(file -> getLog().info("Walk on property file - " + file))
+                .collect(Collectors.toMap(File::getName, file -> file));
+
         for (Map.Entry<String, File> configFile : configFiles.entrySet()) {
             List<String> lines = Files.readAllLines(configFile.getValue().toPath());
             getLog().info("Reading config file - " + configFile.getValue());
@@ -142,27 +152,6 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
 
             table.print((row) -> getLog().info(row));
             getLog().info("\n");
-        }
-    }
-
-    private static class FileWalker {
-
-        private final Consumer<String> log;
-
-        private FileWalker(Consumer<String> log) {
-            this.log = Objects.requireNonNull(log);
-        }
-
-        public Map<String, File> walk(String directory) throws IOException {
-            File root = new File(directory);
-            if (!root.exists()) {
-                return Collections.emptyMap();
-            }
-
-            return Files.walk(root.toPath())
-                    .filter(file -> file.getFileName().toString().contains(".properties"))
-                    .peek(file -> this.log.accept("Walk on property file - " + file))
-                    .collect(Collectors.toMap(file -> file.getFileName().toString(), Path::toFile));
         }
     }
 }
