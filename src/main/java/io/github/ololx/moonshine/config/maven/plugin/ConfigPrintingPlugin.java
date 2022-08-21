@@ -117,19 +117,14 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
         }
     }
 
-    private void walkingThroughConfigFiles(List<String> files, String alias) throws IOException {
-        for (String resource : files) {
+    private void walkingThroughConfigFiles(List<String> resources, String alias) throws IOException {
+        for (String resource : resources) {
             this.walkingThroughConfigFiles(resource, alias);
         }
     }
 
-    private void walkingThroughConfigFiles(String files, String alias) throws IOException {
-        File rootDir = new File(files);
-        if (!rootDir.exists() || !rootDir.isDirectory()) {
-            return;
-        }
-
-        Map<String, File> configFiles = walker.walk(Arrays.asList(rootDir.listFiles()))
+    private void walkingThroughConfigFiles(String resourceDir, String alias) throws IOException {
+        Map<String, File> configFiles = walker.walk(resourceDir)
                 .parallelStream()
                 .filter(file -> file.getName().contains(".properties"))
                 .peek(file -> getLog().info("Walk on property file - " + file))
