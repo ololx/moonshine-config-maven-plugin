@@ -17,8 +17,10 @@
 package io.github.ololx.moonshine.config.maven.plugin;
 
 import java.io.File;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * project moonshine-config-maven-plugin
@@ -28,16 +30,34 @@ import java.util.stream.Collectors;
  */
 public class FileWalker {
 
-    public List<File> walk(List<File> files) {
+    public List<File> walk(String rootDirectory) {
+        File file = new File(rootDirectory);
+
+        if (!file.exists() || !file.isDirectory()) {
+            return Collections.emptyList();
+        }
+
+        return this.walk(file);
+    }
+
+    public List<File> walk(File... files) {
+        if (files == null) {
+            return Collections.emptyList();
+        }
+
+        return this.walk(Arrays.asList(files));
+    }
+
+    public List<File> walk(Iterable<File> files) {
         if (files == null) {
             return Collections.emptyList();
         }
 
         List<File> walked = new ArrayList<>();
 
-        files.parallelStream().forEach(file -> {
+        files.forEach(file -> {
             if (file.isDirectory()) {
-                walked.addAll(walk(Arrays.asList(Objects.requireNonNull(file.listFiles()))));
+                walked.addAll(walk(file.listFiles()));
             } else {
                 walked.add(file);
             }
