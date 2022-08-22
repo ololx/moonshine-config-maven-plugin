@@ -55,7 +55,7 @@ soon...
 For the cloning this repository to a local machine, just use the follows link:
 
 ```https
-https://github.com/ololx/cranberry
+https://github.com/ololx/moonshine-config-maven-plugin
 ```
 
 ## 🛠 Built With
