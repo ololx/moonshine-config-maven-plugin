@@ -27,9 +27,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -48,6 +46,8 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
 
     private static final List<PseudoTable.ColumnFormat> COLUMN_FORMATS;
 
+    private static final Set<String> CONFIG_FILES;
+
     static {
         HEADER = new ArrayList<String>() {{
             add("PROPERTY NAME");
@@ -57,6 +57,10 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
         COLUMN_FORMATS = new ArrayList<PseudoTable.ColumnFormat>(){{
             add(new PseudoTable.ColumnFormat(0, 40));
             add(new PseudoTable.ColumnFormat(1, 60));
+        }};
+
+        CONFIG_FILES = new HashSet<String>() {{
+            add(".properties");
         }};
     }
 
@@ -117,7 +121,8 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
         }
     }
 
-    private void walkingThroughConfigFiles(List<String> resources, String alias) throws IOException {
+    private void walkingThroughConfigFiles(List<String> resources, String alias)
+            throws IOException {
         for (String resource : resources) {
             this.walkingThroughConfigFiles(resource, alias);
         }
@@ -126,7 +131,10 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
     private void walkingThroughConfigFiles(String resourceDir, String alias) throws IOException {
         Map<String, File> configFiles = walker.walk(resourceDir)
                 .parallelStream()
-                .filter(file -> file.getName().contains(".properties"))
+                .filter(file -> {
+                    return CONFIG_FILES.stream()
+                            .anyMatch(type -> file.getName().contains(type));
+                })
                 .peek(file -> getLog().info("Walk on property file - " + file))
                 .collect(Collectors.toMap(File::getName, file -> file));
 
@@ -138,7 +146,8 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
             table.setHeader(HEADER);
 
             for (String line : lines) {
-                List<Object> propertyTuples = Arrays.stream(line.split("=")).map(v -> (Object) v).collect(Collectors.toList());
+                List<Object> propertyTuples = Arrays.stream(line.split("="))
+                        .map(v -> (Object) v).collect(Collectors.toList());
                 if (propertyTuples.size() < 2) {
                     continue;
                 }

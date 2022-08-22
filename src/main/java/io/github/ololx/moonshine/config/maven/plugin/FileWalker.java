@@ -17,9 +17,10 @@
 package io.github.ololx.moonshine.config.maven.plugin;
 
 import java.io.File;
-import java.net.URI;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * project moonshine-config-maven-plugin
