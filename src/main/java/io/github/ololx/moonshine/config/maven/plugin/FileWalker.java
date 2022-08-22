@@ -29,20 +29,22 @@ import java.util.stream.Collectors;
  */
 public class FileWalker {
 
-    public List<File> walk(String filePath) {
-        File rootDir = new File(filePath);
+    public List<File> walk(String rootDirectory) {
+        File file = new File(rootDirectory);
 
-        if (!rootDir.exists() || !rootDir.isDirectory()) {
+        if (!file.exists() || !file.isDirectory()) {
             return Collections.emptyList();
         }
 
-        File[] listFiles = rootDir.listFiles();
+        return this.walk(file);
+    }
 
-        if (listFiles == null || listFiles.length == 0) {
+    public List<File> walk(File... files) {
+        if (files == null) {
             return Collections.emptyList();
         }
 
-        return this.walk(Arrays.asList(listFiles));
+        return this.walk(Arrays.asList(files));
     }
 
     public List<File> walk(Iterable<File> files) {
@@ -52,19 +54,13 @@ public class FileWalker {
 
         List<File> walked = new ArrayList<>();
 
-        for (File file : files) {
-            if (file.isFile()) {
+        files.forEach(file -> {
+            if (file.isDirectory()) {
+                walked.addAll(walk(file.listFiles()));
+            } else {
                 walked.add(file);
-                continue;
             }
-
-            File[] listFiles = file.listFiles();
-            if (listFiles == null || listFiles.length == 0) {
-                continue;
-            }
-
-            walked.addAll(walk(Arrays.asList(listFiles)));
-        }
+        });
 
         return walked;
     }
