@@ -7,11 +7,11 @@ import java.util.stream.IntStream;
 
 public class PseudoTable {
 
-    private final String topRowBorder;
+    private final BorderFormat topRowBorderFormat;
 
-    private final String middleRowBorder;
+    private final BorderFormat middleRowBorder;
 
-    private final String bottomRowBorder;
+    private final BorderFormat bottomRowBorder;
 
     private List<String> header;
 
@@ -25,57 +25,33 @@ public class PseudoTable {
         this.header = new ArrayList<>();
         this.body = new HashMap<>();
         this.columnFormats = columnFormats;
-
-        topRowBorder =  columnFormats.stream().map(columnFormat -> {
-            final StringBuilder line = new StringBuilder();
-            line.append(IntStream.range(0, columnFormat.getWidth() + 2).mapToObj(formatPointer -> String.valueOf('\u2500')).collect(Collectors.joining()));
-
-            if (columnFormat.getIndex() == 0) {
-                line.insert(0, '\u250C');
-            }
-
-            if (columnFormat.getIndex() == columnFormats.size() - 1) {
-                line.append('\u2510');
-            } else {
-                line.append('\u252C');
-            }
-
-            return line.toString();
-        }).collect(Collectors.joining());
-
-        middleRowBorder =  columnFormats.stream().map(columnFormat -> {
-            final StringBuilder line = new StringBuilder();
-            line.append(IntStream.range(0, columnFormat.getWidth() + 2).mapToObj(formatPointer -> String.valueOf('\u2500')).collect(Collectors.joining()));
-
-            if (columnFormat.getIndex() == 0) {
-                line.insert(0, '\u251C');
-            }
-
-            if (columnFormat.getIndex() == columnFormats.size() - 1) {
-                line.append('\u2524');
-            } else {
-                line.append('\u253C');
-            }
-
-            return line.toString();
-        }).collect(Collectors.joining());
-
-        bottomRowBorder =  columnFormats.stream().map(columnFormat -> {
-            final StringBuilder line = new StringBuilder();
-            line.append(IntStream.range(0, columnFormat.getWidth() + 2).mapToObj(formatPointer -> String.valueOf('\u2500')).collect(Collectors.joining()));
-
-            if (columnFormat.getIndex() == 0) {
-                line.insert(0, '\u2514');
-            }
-
-            if (columnFormat.getIndex() == columnFormats.size() - 1) {
-                line.append('\u2518');
-            } else {
-                line.append('\u2534');
-            }
-
-            return line.toString();
-        }).collect(Collectors.joining());
+        this.topRowBorderFormat = new BorderFormat(
+                BorderStyle.builder()
+                        .base(BorderStyle.BASE)
+                        .left(BorderStyle.TOP_LEFT)
+                        .right(BorderStyle.TOP_RIGHT)
+                        .middle(BorderStyle.TOP_MIDDLE)
+                        .build(),
+                columnFormats
+        );
+        this.middleRowBorder = new BorderFormat(
+                BorderStyle.builder()
+                        .base(BorderStyle.BASE)
+                        .left(BorderStyle.MIDDLE_LEFT)
+                        .right(BorderStyle.MIDDLE_RIGHT)
+                        .middle(BorderStyle.MIDDLE_MIDDLE)
+                        .build(),
+                columnFormats
+        );
+        this.bottomRowBorder = new BorderFormat(
+                BorderStyle.builder()
+                        .base(BorderStyle.BASE)
+                        .left(BorderStyle.BOTTOM_LEFT)
+                        .right(BorderStyle.BOTTOM_RIGHT)
+                        .middle(BorderStyle.BOTTOM_MIDDLE)
+                        .build(),
+                columnFormats
+        );
     }
 
     public void setHeader(List<String> header) {
@@ -114,7 +90,7 @@ public class PseudoTable {
             throw new RuntimeException("The header must contains of two cells");
         }
 
-        out.accept(topRowBorder);
+        out.accept(topRowBorderFormat.format);
 
         final String headerString = '\u2502' + columnFormats.stream()
                 .map(format -> String.format(format.format(), header.get(format.index)) + '\u2502')
@@ -127,7 +103,7 @@ public class PseudoTable {
                 continue;
             }
 
-            out.accept(middleRowBorder);
+            out.accept(middleRowBorder.format);
 
             final Map<Integer, List<String>> rowCells = reformatRowForColumnWidth(row);
             rowCells.entrySet().forEach(rowCellEntry -> {
@@ -143,7 +119,7 @@ public class PseudoTable {
             });
         }
 
-        out.accept(bottomRowBorder);
+        out.accept(bottomRowBorder.format);
     }
 
     private Map<Integer, List<String>> reformatRowForColumnWidth(List<Object> row) {
@@ -194,6 +170,145 @@ public class PseudoTable {
 
         public boolean isBordered() {
             return true;
+        }
+
+        public String format() {
+            return this.format;
+        }
+    }
+
+    public static class BorderStyle {
+
+        public static final char TOP_LEFT = '\u250C';
+
+        public static final char TOP_RIGHT = '\u2510';
+
+        public static final char TOP_MIDDLE = '\u252C';
+
+        public static final char MIDDLE_LEFT = '\u251C';
+
+        public static final char MIDDLE_RIGHT = '\u2524';
+
+        public static final char MIDDLE_MIDDLE = '\u253C';
+
+        public static final char BOTTOM_LEFT = '\u2514';
+
+        public static final char BOTTOM_RIGHT = '\u2518';
+
+        public static final char BOTTOM_MIDDLE = '\u2534';
+
+        public static final char BASE = '\u2500';
+
+        private final char left;
+
+        private final char middle;
+
+        private final char right;
+
+        private final char base;
+
+        public BorderStyle(char left, char middle, char right, char base) {
+            this.left = left;
+            this.middle = middle;
+            this.right = right;
+            this.base = base;
+        }
+
+        public char getBase() {
+            return base;
+        }
+
+        public char getLeft() {
+            return left;
+        }
+
+        public char getMiddle() {
+            return middle;
+        }
+
+        public char getRight() {
+            return right;
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static class Builder {
+
+            private static final char DEFAULT_STYLE = '*';
+
+            private char left = DEFAULT_STYLE;
+
+            private char middle = DEFAULT_STYLE;
+
+            private char right = DEFAULT_STYLE;
+
+            private char base = DEFAULT_STYLE;
+
+            private Builder() {}
+
+            public Builder base(char base) {
+                this.base = base;
+
+                return this;
+            }
+
+            public Builder left(char left) {
+                this.left = left;
+
+                return this;
+            }
+
+            public Builder middle(char middle) {
+                this.middle = middle;
+
+                return this;
+            }
+
+            public Builder right(char right) {
+                this.right = right;
+
+                return this;
+            }
+
+            public BorderStyle build() {
+                return new BorderStyle(
+                        this.left,
+                        this.middle,
+                        this.right,
+                        this.base
+                );
+            }
+        }
+    }
+
+    public static class BorderFormat {
+
+        private final String format;
+
+        public BorderFormat(BorderStyle style, Collection<ColumnFormat> columnFormats) {
+            this.format = columnFormats.stream().map(columnFormat -> {
+                final StringBuilder line = new StringBuilder();
+                line.append(
+                        IntStream.range(0, columnFormat.getWidth() + 2)
+                                .mapToObj(formatPointer -> {
+                                    return String.valueOf(style.base);
+                                }).collect(Collectors.joining())
+                );
+
+                if (columnFormat.getIndex() == 0) {
+                    line.insert(0, style.left);
+                }
+
+                if (columnFormat.getIndex() == columnFormats.size() - 1) {
+                    line.append(style.right);
+                } else {
+                    line.append(style.middle);
+                }
+
+                return line.toString();
+            }).collect(Collectors.joining());
         }
 
         public String format() {
