@@ -32,7 +32,7 @@ The `Config Maven Plugin` is a maven plugin which allows to print your project c
 
 The demonstration shows how `Config Maven Plugin` pront properties from property file..
 
-![The demo of config maven plugin usage](https://github.com/ololx/moonshine-config-maven-plugin/blob/assets/demo/print.gif?raw=true)
+![The demo of config maven plugin usage](https://github.com/ololx/moonshine-config-maven-plugin/blob/assets/print.gif?raw=true)
 
 ## 🎚 Features
 
