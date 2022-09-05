@@ -25,7 +25,9 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -139,23 +141,36 @@ public final class ConfigPrintingPlugin extends AbstractMojo {
                 .collect(Collectors.toMap(File::getName, file -> file));
 
         for (Map.Entry<String, File> configFile : configFiles.entrySet()) {
-            List<String> lines = Files.readAllLines(configFile.getValue().toPath());
+            Properties properties = this.readConfig(configFile.getValue());
+            Set<Map.Entry<Object, Object>> lines = properties.entrySet();
             getLog().info("Reading config file - " + configFile.getValue());
 
             PseudoTable table = new PseudoTable(COLUMN_FORMATS);
             table.setHeader(HEADER);
 
-            for (String line : lines) {
-                List<Object> propertyTuples = Arrays.stream(line.split("="))
-                        .map(v -> (Object) v).collect(Collectors.toList());
-                if (propertyTuples.size() < 2) {
-                    continue;
-                }
-                table.addBodyRow(propertyTuples);
-            }
+            lines.forEach(property -> {
+                table.addBodyRow(
+                        new ArrayList<Object>() {{
+                            add(property.getKey());
+                            add(property.getValue());
+                        }}
+                );
+            });
 
             table.print((row) -> getLog().info(row));
             getLog().info("\n");
         }
+    }
+
+    private Properties readConfig(File configFile) {
+        Properties properties = new Properties();
+
+        try (InputStream input = new FileInputStream(configFile.getPath())) {
+            properties.load(input);
+        } catch (IOException ex) {
+            getLog().warn("Reading config file - " + configFile.getPath());
+        }
+
+        return properties;
     }
 }

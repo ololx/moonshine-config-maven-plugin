@@ -102,7 +102,7 @@
     <!--[properties-->
     <properties>
         <!--[project versions-->
-        <revision>0.0.3</revision>
+        <revision>0.0.4</revision>
         <changelist>-SNAPSHOT</changelist>
         <sha1/>
         <!--project versions]-->
